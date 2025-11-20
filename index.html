@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Smart Inventory — Animated Modern</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- TOPBAR (NEW) -->
+  <header id="topbar">
+    <div class="tb-left">
+      <div id="menu-btn" class="menu-btn" onclick="toggleSidebar()">☰</div>
+      <div class="brand">
+        <strong>Smart Inventory</strong>
+        <small>Manage stock easily</small>
+      </div>
+    </div>
+
+    <div class="tb-center">
+      <input id="globalSearch" placeholder="Search products, categories..." />
+    </div>
+
+    <div class="tb-right">
+      <button id="notifBtn" class="icon-btn" title="Notifications">🔔 <span id="notifCount" class="badge hidden">3</span></button>
+      <button id="themeBtn" class="icon-btn" title="Toggle theme">🌓</button>
+      <div class="profile" title="Profile">
+        <div class="avatar">A</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <h2>📦 Smart Inventory</h2>
+    <ul>
+      <li onclick="showSection('dashboard')">Dashboard</li>
+      <li onclick="showSection('products')">Products</li>
+      <li onclick="showSection('stock')">Low Stock</li>
+      <li onclick="showSection('sales')">Sales</li>
+      <li onclick="showSection('predict')">AI Prediction</li>
+    </ul>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="main">
+    <section id="dashboard" class="page active">
+      <h1>📊 Dashboard</h1>
+      <div class="card">Total Products: <span class="stat">128</span></div>
+      <div class="card">Low Stock Items: <span class="stat">06</span></div>
+      <div class="card">Predicted Orders: <span class="stat">04</span></div>
+    </section>
+
+    <section id="products" class="page">
+      <h1>📦 Products</h1>
+
+      <!-- example product cards — these will be replaced/expanded in later steps -->
+      <div id="productList" class="product-list">
+        <div class="card product" data-name="Rice 5kg">Rice 5kg — Stock: 18</div>
+        <div class="card product" data-name="Atta 2kg">Atta 2kg — Stock: 8</div>
+        <div class="card product" data-name="Sugar 1kg">Sugar 1kg — Stock: 25</div>
+        <div class="card product" data-name="Oil 1L">Oil 1L — Stock: 6</div>
+      </div>
+    </section>
+
+    <section id="stock" class="page">
+      <h1>⚠️ Low Stock Alerts</h1>
+      <div class="card">Oil 1L — Stock: 6 (below threshold)</div>
+    </section>
+
+    <section id="sales" class="page">
+      <h1>📈 Sales Report</h1>
+      <div class="card">Daily & monthly sales data (will add charts).</div>
+    </section>
+
+    <section id="predict" class="page">
+      <h1>🤖 AI Demand Prediction</h1>
+      <div class="card">Future demand & reorder suggestions (demo).</div>
+    </section>
+  </main>
+
+  
+
+  <script src="script.js"></script>
+</body>
+</html>
