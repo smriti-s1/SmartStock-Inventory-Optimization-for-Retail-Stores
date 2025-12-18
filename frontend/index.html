@@ -1,0 +1,443 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>SmartStock – Store Sales Forecast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Chart.js for graph -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+  <div class="header-top">
+    <h1>SmartStock – Store Sales Forecast</h1>
+    <div style="display:flex; gap:8px;">
+      <button id="theme-toggle" class="theme-toggle">🌙</button>
+      <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+    </div>
+  </div>
+  <p>Automatic demand forecasting and stock alerts with AI & ML.</p>
+</header>
+
+
+    <!-- TOP NAV BAR -->
+    <nav class="top-nav">
+      <button class="nav-btn active" data-view="alerts">Auto Stock Alerts</button>
+      <button class="nav-btn" data-view="summary">Summary Dashboard</button>
+      <button class="nav-btn" data-view="range">Custom Range Dashboard</button>
+      <button class="nav-btn" data-view="info">Model Metrics & API Status</button>
+      <!-- NEW Manage Items view -->
+      <button class="nav-btn" data-view="manage">Manage Items</button>
+    </nav>
+
+    <main class="main">
+      <!-- VIEW 1: Auto Stock Alerts -->
+      <section id="view-alerts">
+        <div class="export-row">
+  <button id="alert-btn" class="btn btn-secondary btn-sm">
+    🔔 Send Stock Alerts
+  </button>
+</div>
+<div class="card">
+  <h2>📦 Inventory Dashboard</h2>
+
+  <button id="sendAlertsBtn" class="btn">
+    🔔 Send Stock Alerts
+  </button>
+</div>
+
+<!-- 👇 YAHI ADD KARO (ALERT SETTINGS CARD) -->
+<div class="card">
+  <h3>🔔 Alert Settings</h3>
+
+  <label>
+    <input type="checkbox" id="emailToggle" />
+    Email Alerts
+  </label>
+
+  <br />
+
+  <label>
+    <input type="checkbox" id="smsToggle" />
+    SMS Alerts
+  </label>
+
+  <p id="toggleStatus"></p>
+</div>
+
+
+<p id="alert-msg" class="health-status small"></p>
+
+        <!-- CARD 1: All Alerts + Graph -->
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Auto Stock Alerts (Overstock / Understock)</h2>
+            <div class="card-controls">
+              <button id="load-auto-btn" class="btn btn-secondary btn-sm">
+                Load Alerts
+              </button>
+
+              <!-- Auto-refresh controls -->
+              <label class="inline-label">
+                <input type="checkbox" id="auto-refresh-toggle" />
+                Auto-refresh
+              </label>
+              <select id="auto-refresh-interval" class="select-sm">
+                <option value="30">Every 30 sec</option>
+                <option value="60">Every 60 sec</option>
+                <option value="300">Every 5 min</option>
+              </select>
+
+              <!-- NEW: search box for Auto Stock Alerts -->
+              <input id="auto-search" class="select-sm" placeholder="Search store or family" style="min-width:180px;" />
+              <button id="auto-search-btn" class="btn btn-secondary btn-sm">Search</button>
+              <button id="auto-search-clear-btn" class="btn btn-secondary btn-sm">Clear</button>
+
+              <!-- Filter & sort controls for ALL alerts -->
+              <select id="status-filter" class="select-sm">
+                <option value="all">All statuses</option>
+                <option value="understock">Understock only</option>
+                <option value="overstock">Overstock only</option>
+              </select>
+              <select id="sort-mode" class="select-sm">
+                <option value="none">Sort: default</option>
+                <option value="severity_desc">Sort: by severity</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Last updated text -->
+          <p id="last-updated" class="health-status small"></p>
+
+          <div id="auto-alerts-container" class="auto-alerts hidden">
+            <h3>Shortage / Excess (units)</h3>
+
+            <!-- CUSTOM LEGEND -->
+            <div class="legend-box">
+              <span class="legend-item">
+                <span class="legend-color" style="background:red;"></span> Overstock
+              </span>
+              <span class="legend-item">
+                <span class="legend-color" style="background:green;"></span> Understock
+              </span>
+              <span class="legend-item">
+                <span class="legend-color" style="background:#3b82f6;"></span> OK / Balanced
+              </span>
+            </div>
+
+            <!-- Fixed-height graph area -->
+            <div style="height: 380px;">
+              <canvas id="auto-chart"></canvas>
+            </div>
+
+            <h3 style="margin-top: 12px;">Details</h3>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Store</th>
+                    <th>Family</th>
+                    <th>Current Stock</th>
+                    <th>Predicted Demand</th>
+                    <th>Status</th>
+                    <th>Shortage / Excess</th>
+                  </tr>
+                </thead>
+                <tbody id="auto-table-body">
+                  <!-- rows via JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- EXPORT BUTTON -->
+            <div class="export-row">
+              <button id="export-csv-btn" class="btn btn-secondary btn-sm">
+                Export to CSV
+              </button>
+            </div>
+
+            <!-- Error box (for auto alerts & metrics) -->
+            <div id="error-box" class="error-box hidden"></div>
+          </div>
+        </section>
+
+        <!-- CARD 2: Critical Alerts (separate section) -->
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Critical Alerts (High Risk Items)</h2>
+            <div class="card-controls">
+              <!-- Store-wise filter -->
+              <select id="critical-store-filter" class="select-sm">
+                <option value="all">All stores</option>
+              </select>
+
+              <!-- Status-wise filter -->
+              <select id="critical-filter" class="select-sm">
+                <option value="all">All critical</option>
+                <option value="overstock">Overstock</option>
+                <option value="understock">Understock</option>
+                <option value="stockout">Stockout</option>
+              </select>
+            </div>
+          </div>
+
+          <p id="critical-help-text" class="health-status small">
+            Load alerts above to see critical items based on demand vs stock.
+          </p>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Store</th>
+                  <th>Family</th>
+                  <th>Derived Status</th>
+                  <th>Current Stock</th>
+                  <th>Predicted Demand</th>
+                  <th>Shortage / Excess</th>
+                </tr>
+              </thead>
+              <tbody id="critical-table-body">
+                <!-- rows via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <!-- VIEW 2: Summary Dashboard (NEW with filters) -->
+      <section id="view-summary" class="hidden">
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Summary Dashboard</h2>
+            <div class="card-controls">
+              <!-- NEW: Store filter for summary -->
+              <select id="summary-store-filter" class="select-sm">
+                <option value="all">All stores</option>
+              </select>
+
+              <!-- NEW: Status filter for summary -->
+              <select id="summary-status-filter" class="select-sm">
+                <option value="all">All statuses</option>
+                <option value="overstock">Overstock</option>
+                <option value="understock">Understock</option>
+                <option value="stockout">Stockout</option>
+              </select>
+            </div>
+          </div>
+
+          <p class="health-status small">
+            Summary is calculated from the latest Auto Stock Alerts data. Please load alerts first if everything shows "-".
+          </p>
+
+          <!-- KPI CARDS -->
+          <div class="kpi-grid">
+            <div class="kpi-card kpi-under">
+              <div class="kpi-label">Understock Items</div>
+              <div class="kpi-value" id="kpi-understock">-</div>
+            </div>
+            <div class="kpi-card kpi-over">
+              <div class="kpi-label">Overstock Items</div>
+              <div class="kpi-value" id="kpi-overstock">-</div>
+            </div>
+            <div class="kpi-card kpi-stockout">
+              <div class="kpi-label">Stockout Items</div>
+              <div class="kpi-value" id="kpi-stockout">-</div>
+            </div>
+            <div class="kpi-card kpi-stores">
+              <div class="kpi-label">Stores Impacted</div>
+              <div class="kpi-value" id="kpi-stores">-</div>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 18px;">Filtered Critical Items</h3>
+          <div class="table-wrapper" style="margin-top: 8px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Store</th>
+                  <th>Family</th>
+                  <th>Derived Status</th>
+                  <th>Current Stock</th>
+                  <th>Predicted Demand</th>
+                  <th>Shortage / Excess</th>
+                </tr>
+              </thead>
+              <tbody id="summary-critical-body">
+                <!-- filled by JS -->
+              </tbody>
+            </table>
+          </div>
+          <p id="summary-helper" class="health-status small"></p>
+        </section>
+      </section>
+
+      <!-- VIEW 3: Custom Range Dashboard -->
+      <section id="view-range" class="hidden">
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Custom Range Dashboard (Time Series)</h2>
+          </div>
+
+          <div class="range-form">
+            <div class="form-row">
+              <label for="range-store">Store Number</label>
+              <input type="number" id="range-store" placeholder="e.g. 1" />
+            </div>
+            <div class="form-row">
+              <label for="range-family">Family</label>
+              <input type="text" id="range-family" placeholder="e.g. GROCERY I" />
+            </div>
+          </div>
+
+          <p class="health-status">
+            System automatically shows <strong>last 30 days</strong> forecast for the selected store & family.
+          </p>
+
+          <button id="range-load-btn" class="btn btn-secondary btn-sm" style="margin-top: 8px;">
+            Build Graph
+          </button>
+
+          <div id="range-container" class="auto-alerts hidden">
+            <h3>Predicted Sales over Time</h3>
+            <div style="height: 320px; margin-top: 6px;">
+              <canvas id="range-chart"></canvas>
+            </div>
+            <p id="range-info" class="health-status"></p>
+          </div>
+        </section>
+      </section>
+
+      <!-- VIEW 4: Model Metrics + API Status -->
+      <section id="view-info" class="hidden">
+        <div class="main-grid">
+          <!-- Model Metrics -->
+          <section class="card">
+            <h2>Model Metrics</h2>
+            <button id="load-metrics-btn" class="btn btn-secondary">
+              Load Model Metrics
+            </button>
+
+            <div id="metrics-box" class="metrics-box hidden">
+              <p><strong>MAE:</strong> <span id="metric-mae"></span></p>
+              <p><strong>RMSE:</strong> <span id="metric-rmse"></span></p>
+              <p><strong>R²:</strong> <span id="metric-r2"></span></p>
+            </div>
+          </section>
+
+          <!-- API Health -->
+          <section class="card">
+            <h2>API Status</h2>
+            <button id="check-health-btn" class="btn btn-secondary">
+              Check Backend Health
+            </button>
+            <p id="health-status" class="health-status"></p>
+          </section>
+        </div>
+      </section>
+
+      <!-- VIEW 5: Manage Items (NEW) -->
+      <section id="view-manage" class="hidden">
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Manage Inventory Items</h2>
+            <div class="card-controls">
+              <input id="manage-search" placeholder="Search family (press Enter)" class="select-sm" style="min-width:220px;" />
+              <button id="manage-search-btn" class="btn btn-secondary btn-sm">Search</button>
+              <button id="manage-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+            </div>
+          </div>
+
+          <p class="health-status small">Add new inventory items, update current stock or delete items. Click a row to edit it.</p>
+
+          <div class="manage-grid" style="display:flex; gap:12px; align-items:flex-start; margin-top:8px;">
+            <div style="flex:1; min-width:320px;">
+              <h3>Item Form</h3>
+
+              <!-- hidden id kept internally -->
+              <input type="hidden" id="item-id" />
+
+              <div class="form-row">
+                <label for="item-store">Store Number</label>
+                <input id="item-store" type="number" placeholder="e.g. 1" />
+              </div>
+              <div class="form-row">
+                <label for="item-family">Family</label>
+                <input id="item-family" type="text" placeholder="e.g. GROCERY I" />
+              </div>
+              <div class="form-row">
+                <label for="item-stock">Current Stock</label>
+                <input id="item-stock" type="number" step="0.01" placeholder="e.g. 120.5" />
+              </div>
+
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button id="item-add-btn" class="btn btn-secondary btn-sm">Add Item</button>
+                <button id="item-update-btn" class="btn btn-secondary btn-sm">Update Item</button>
+                <button id="item-delete-btn" class="btn btn-secondary btn-sm">Delete Item</button>
+                <button id="item-clear-btn" class="btn btn-secondary btn-sm">Clear</button>
+              </div>
+
+              <p id="manage-msg" class="health-status small" style="margin-top:10px;"></p>
+            </div>
+
+            <div style="flex:2; min-width:420px;">
+              <h3>Items</h3>
+              <div class="table-wrapper" style="max-height:300px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <!-- ID removed from visible table as requested -->
+                      <th>Store</th>
+                      <th>Family</th>
+                      <th>Current Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody id="manage-table-body">
+                    <!-- rows via JS -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- RECENT INSERTS DASHBOARD -->
+              <section class="card" style="margin-top:12px;">
+                <div class="card-header-row">
+                  <h3 style="margin:0;">Recent Inserts</h3>
+                  <div>
+                    <button id="recent-clear-btn" class="btn btn-secondary btn-sm">Clear Recent</button>
+                  </div>
+                </div>
+                <p id="recent-count" class="health-status small" style="margin-top:6px;">No recent inserts.</p>
+                <div class="table-wrapper" style="max-height:200px; margin-top:8px;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Store</th>
+                        <th>Family</th>
+                        <th>Current Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recent-table-body">
+                      <!-- recent inserts populated by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>SmartStock · FastAPI · MySQL · ML · Light/Dark mode UI</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
