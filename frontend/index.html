@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>SmartStock – Store Sales Forecast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-top">
+        <h1>SmartStock – Store Sales Forecast</h1>
+        <div style="display:flex; gap:8px;">
+          <button id="theme-toggle" class="theme-toggle">🌙</button>
+          <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+        </div>
+      </div>
+      <p>Automatic demand forecasting and stock alerts with AI & ML.</p>
+    </header>
+
+    <nav class="top-nav">
+      <button class="nav-btn active" data-view="alerts">Auto Stock Alerts</button>
+      <button class="nav-btn" data-view="summary">Summary Dashboard</button>
+      <button class="nav-btn" data-view="range">Custom Range Dashboard</button>
+      <button class="nav-btn" data-view="manage">Manage Items</button>
+      <button class="nav-btn" data-view="analytics">Advanced Analytics</button>
+    </nav>
+
+    <main class="main">
+      
+      <section id="view-alerts">
+        <div class="card card-wide">
+          <div class="card-header-row">
+            <h2>🔔 Notification Control Center</h2>
+          </div>
+          <p class="health-status small" style="margin-bottom: 12px;">
+            Click the boxes below to toggle Email or SMS on/off. Then click "Send Now".
+          </p>
+          <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px;">
+            <div id="toggle-email-card" class="kpi-card alert-toggle">
+              <div class="kpi-label">📧 Email Alerts</div>
+              <div class="kpi-value" id="status-email-text">OFF</div>
+              <div class="small status-indicator">Inactive</div>
+            </div>
+            <div id="toggle-sms-card" class="kpi-card alert-toggle">
+              <div class="kpi-label">📱 SMS Alerts</div>
+              <div class="kpi-value" id="status-sms-text">OFF</div>
+              <div class="small status-indicator">Inactive</div>
+            </div>
+            <div id="btn-master-send" class="kpi-card action-card">
+              <div class="kpi-label">🚀 Action</div>
+              <div class="kpi-value" style="font-size: 1.1rem;">Send Now</div>
+              <div class="small">Trigger Alerts</div>
+            </div>
+          </div>
+          <p id="alert-system-msg" class="health-status" style="font-weight: 500; min-height: 20px;"></p>
+        </div>
+
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Auto Stock Alerts (Overstock / Understock)</h2>
+            <div class="card-controls">
+              <button id="load-auto-btn" class="btn btn-secondary btn-sm">Load Alerts</button>
+              <label class="inline-label">
+                <input type="checkbox" id="auto-refresh-toggle" />
+                Auto-refresh
+              </label>
+              <select id="auto-refresh-interval" class="select-sm">
+                <option value="30">Every 30 sec</option>
+                <option value="60">Every 60 sec</option>
+                <option value="300">Every 5 min</option>
+              </select>
+              <input id="auto-search" class="select-sm" placeholder="Search store or family" style="min-width:180px;" />
+              <button id="auto-search-btn" class="btn btn-secondary btn-sm">Search</button>
+              <button id="auto-search-clear-btn" class="btn btn-secondary btn-sm">Clear</button>
+              <select id="status-filter" class="select-sm">
+                <option value="all">All statuses</option>
+                <option value="understock">Understock only</option>
+                <option value="overstock">Overstock only</option>
+              </select>
+              <select id="sort-mode" class="select-sm">
+                <option value="none">Sort: default</option>
+                <option value="severity_desc">Sort: by severity</option>
+              </select>
+            </div>
+          </div>
+          <p id="last-updated" class="health-status small"></p>
+
+          <div id="auto-alerts-container" class="auto-alerts hidden">
+            <h3>Shortage / Excess (units)</h3>
+            <div class="legend-box">
+              <span class="legend-item"><span class="legend-color" style="background:red;"></span> Overstock</span>
+              <span class="legend-item"><span class="legend-color" style="background:green;"></span> Understock</span>
+              <span class="legend-item"><span class="legend-color" style="background:#3b82f6;"></span> OK / Balanced</span>
+            </div>
+            <div style="height: 380px;">
+              <canvas id="auto-chart"></canvas>
+            </div>
+            <h3 style="margin-top: 12px;">Details</h3>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Store</th>
+                    <th>Family</th>
+                    <th>Current Stock</th>
+                    <th>Predicted Demand</th>
+                    <th>Status</th>
+                    <th>Shortage / Excess</th>
+                  </tr>
+                </thead>
+                <tbody id="auto-table-body"></tbody>
+              </table>
+            </div>
+            <div class="export-row">
+              <button id="export-csv-btn" class="btn btn-secondary btn-sm">Export to CSV</button>
+            </div>
+            <div id="error-box" class="error-box hidden"></div>
+          </div>
+        </section>
+
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Critical Alerts (High Risk Items)</h2>
+            <div class="card-controls">
+              <select id="critical-store-filter" class="select-sm">
+                <option value="all">All stores</option>
+              </select>
+              <select id="critical-filter" class="select-sm">
+                <option value="all">All critical</option>
+                <option value="overstock">Overstock</option>
+                <option value="understock">Understock</option>
+                <option value="stockout">Stockout</option>
+              </select>
+            </div>
+          </div>
+          <p id="critical-help-text" class="health-status small">Load alerts above to see critical items based on demand vs stock.</p>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Store</th>
+                  <th>Family</th>
+                  <th>Derived Status</th>
+                  <th>Current Stock</th>
+                  <th>Predicted Demand</th>
+                  <th>Shortage / Excess</th>
+                </tr>
+              </thead>
+              <tbody id="critical-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="view-summary" class="hidden">
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Summary Dashboard</h2>
+            <div class="card-controls">
+              <select id="summary-store-filter" class="select-sm">
+                <option value="all">All stores</option>
+              </select>
+              <select id="summary-status-filter" class="select-sm">
+                <option value="all">All statuses</option>
+                <option value="overstock">Overstock</option>
+                <option value="understock">Understock</option>
+                <option value="stockout">Stockout</option>
+              </select>
+            </div>
+          </div>
+          <p class="health-status small">Summary is calculated from the latest Auto Stock Alerts data. Please load alerts first if everything shows "-".</p>
+          <div class="kpi-grid">
+            <div class="kpi-card kpi-under">
+              <div class="kpi-label">Understock Items</div>
+              <div class="kpi-value" id="kpi-understock">-</div>
+            </div>
+            <div class="kpi-card kpi-over">
+              <div class="kpi-label">Overstock Items</div>
+              <div class="kpi-value" id="kpi-overstock">-</div>
+            </div>
+            <div class="kpi-card kpi-stockout">
+              <div class="kpi-label">Stockout Items</div>
+              <div class="kpi-value" id="kpi-stockout">-</div>
+            </div>
+            <div class="kpi-card kpi-stores">
+              <div class="kpi-label">Stores Impacted</div>
+              <div class="kpi-value" id="kpi-stores">-</div>
+            </div>
+          </div>
+          <h3 style="margin-top: 18px;">Filtered Critical Items</h3>
+          <div class="table-wrapper" style="margin-top: 8px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Store</th>
+                  <th>Family</th>
+                  <th>Derived Status</th>
+                  <th>Current Stock</th>
+                  <th>Predicted Demand</th>
+                  <th>Shortage / Excess</th>
+                </tr>
+              </thead>
+              <tbody id="summary-critical-body"></tbody>
+            </table>
+          </div>
+          <p id="summary-helper" class="health-status small"></p>
+        </section>
+      </section>
+
+      <section id="view-range" class="hidden">
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Custom Range Dashboard (Time Series)</h2>
+          </div>
+          <div class="range-form" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+            <div class="form-row">
+              <label for="range-store">Store Number</label>
+              <input type="number" id="range-store" placeholder="e.g. 1" style="width: 120px;" />
+            </div>
+            <div class="form-row">
+              <label for="range-family">Family</label>
+              <input type="text" id="range-family" placeholder="e.g. GROCERY I" style="width: 200px;" />
+            </div>
+            <div class="form-row">
+              <label for="range-duration">Time Range</label>
+              <select id="range-duration" class="select-sm" style="height: 38px; font-size: 0.95rem;">
+                <option value="7">Last Week (7 Days)</option>
+                <option value="30" selected>Last Month (30 Days)</option>
+                <option value="90">Last 3 Months</option>
+                <option value="365">Last Year (365 Days)</option>
+              </select>
+            </div>
+            <button id="range-load-btn" class="btn btn-secondary btn-sm" style="height: 38px; margin-bottom: 2px;">
+              Build Graph
+            </button>
+          </div>
+          <div id="range-container" class="auto-alerts hidden" style="margin-top: 15px;">
+            <h3>Predicted Sales over Time</h3>
+            <div style="height: 320px; margin-top: 6px;">
+              <canvas id="range-chart"></canvas>
+            </div>
+            <p id="range-info" class="health-status"></p>
+          </div>
+        </section>
+      </section>
+
+      <section id="view-manage" class="hidden">
+        <section class="card card-wide">
+          <div class="card-header-row">
+            <h2>Manage Inventory Items</h2>
+            <div class="card-controls">
+              <input id="manage-search" placeholder="Search family (press Enter)" class="select-sm" style="min-width:220px;" />
+              <button id="manage-search-btn" class="btn btn-secondary btn-sm">Search</button>
+              <button id="manage-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+            </div>
+          </div>
+          <p class="health-status small">Add new inventory items, update current stock or delete items. Click a row to edit it.</p>
+          <div class="manage-grid" style="display:flex; gap:12px; align-items:flex-start; margin-top:8px;">
+            <div style="flex:1; min-width:320px;">
+              <h3>Item Form</h3>
+              <input type="hidden" id="item-id" />
+              <div class="form-row">
+                <label for="item-store">Store Number</label>
+                <input id="item-store" type="number" placeholder="e.g. 1" />
+              </div>
+              <div class="form-row">
+                <label for="item-family">Family</label>
+                <input id="item-family" type="text" placeholder="e.g. GROCERY I" />
+              </div>
+              <div class="form-row">
+                <label for="item-stock">Current Stock</label>
+                <input id="item-stock" type="number" step="0.01" placeholder="e.g. 120.5" />
+              </div>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button id="item-add-btn" class="btn btn-secondary btn-sm">Add Item</button>
+                <button id="item-update-btn" class="btn btn-secondary btn-sm">Update Item</button>
+                <button id="item-delete-btn" class="btn btn-secondary btn-sm">Delete Item</button>
+                <button id="item-clear-btn" class="btn btn-secondary btn-sm">Clear</button>
+              </div>
+              <p id="manage-msg" class="health-status small" style="margin-top:10px;"></p>
+            </div>
+            <div style="flex:2; min-width:420px;">
+              <h3>Items</h3>
+              <div class="table-wrapper" style="max-height:300px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Store</th>
+                      <th>Family</th>
+                      <th>Current Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody id="manage-table-body"></tbody>
+                </table>
+              </div>
+              <section class="card" style="margin-top:12px;">
+                <div class="card-header-row">
+                  <h3 style="margin:0;">Recent Inserts</h3>
+                  <div>
+                    <button id="recent-clear-btn" class="btn btn-secondary btn-sm">Clear Recent</button>
+                  </div>
+                </div>
+                <p id="recent-count" class="health-status small" style="margin-top:6px;">No recent inserts.</p>
+                <div class="table-wrapper" style="max-height:200px; margin-top:8px;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Store</th>
+                        <th>Family</th>
+                        <th>Current Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recent-table-body"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="view-analytics" class="hidden">
+        
+        <section class="card card-wide">
+  <div class="card-header-row">
+    <h2>📊 ABC Inventory Analysis</h2>
+    
+    <div class="card-controls">
+      <input id="abc-store-input" type="number" placeholder="Store (Optional)" class="select-sm" style="width: 110px;">
+      <input id="abc-family-input" type="text" placeholder="Family (Optional)" class="select-sm" style="width: 140px;">
+      <button id="load-abc-btn" class="btn btn-secondary btn-sm">Analyze</button>
+    </div>
+    </div>
+  
+  <p class="health-status small">Leave inputs empty for Global Analysis, or filter to drill down.</p>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+    <div style="flex: 1; min-width: 300px; height: 300px;">
+      <canvas id="abc-chart"></canvas>
+    </div>
+    <div style="flex: 1; min-width: 300px;">
+      <h3>Insights (Pareto Principle)</h3>
+      <p class="health-status small" style="margin-bottom: 10px;">
+        Class A items generate 80% of sales volume based on current filters.
+      </p>
+      <ul id="abc-insights-list" style="line-height: 1.8; color: var(--text);">
+        <li>Click "Analyze" to see data.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+        <section class="card card-wide">
+  <div class="card-header-row">
+    <h2>🚨 Anomaly Detection (Theft/Spike Alert)</h2>
+    
+    <div class="card-controls">
+      <input id="anom-store-input" type="number" placeholder="Store (Optional)" class="select-sm" style="width: 110px;">
+      <input id="anom-family-input" type="text" placeholder="Family (Optional)" class="select-sm" style="width: 140px;">
+      <button id="load-anom-btn" class="btn btn-secondary btn-sm">Scan All</button>
+    </div>
+    </div>
+  
+  <p class="health-status small" id="anom-status-text">
+    Detecting sales spikes (Z-Score > 2.5) in the last 1 year.
+  </p>
+  
+  <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Store</th>
+          <th>Item</th>
+          <th>Date</th>
+          <th>Sales (Qty)</th>
+          <th>Avg Sales</th>
+          <th>Deviation</th>
+        </tr>
+      </thead>
+      <tbody id="anom-table-body">
+        </tbody>
+    </table>
+  </div>
+</section>
+
+        <section class="card card-wide">
+  <div class="card-header-row">
+    <h2>🛒 Market Basket Patterns</h2>
+    
+    <div class="card-controls">
+      <input id="mba-store-input" type="number" placeholder="Store (Optional)" class="select-sm" style="width: 120px;">
+      
+      <label class="inline-label" style="font-size:0.8rem; color:var(--muted);">Min Conf %:</label>
+      <input id="mba-threshold-input" type="number" value="30" min="1" max="100" class="select-sm" style="width: 60px;">
+      
+      <button id="load-mba-btn" class="btn btn-secondary btn-sm">Find Patterns</button>
+    </div>
+    </div>
+  
+  <p class="health-status small" id="mba-status-text">
+    Find items that sell together. Lower the "Min Conf %" to see more data.
+  </p>
+  
+  <div id="mba-rules-container" class="kpi-grid" style="grid-template-columns: repeat(2, 1fr); max-height: 500px; overflow-y: auto;">
+    </div>
+</section>
+<section class="card card-wide">
+  <div class="card-header-row">
+    <h2>🚚 Inter-Store Transfer Optimizer</h2>
+    
+    <div class="card-controls">
+      <label class="inline-label" style="font-size:0.8rem; color:var(--muted);">Donor Stock > </label>
+      <input id="transfer-min-input" type="number" value="30" class="select-sm" style="width: 70px;">
+      
+      <label class="inline-label" style="font-size:0.8rem; color:var(--muted);">Receiver Stock < </label>
+      <input id="transfer-max-input" type="number" value="5" class="select-sm" style="width: 70px;">
+      
+      <button id="load-transfer-btn" class="btn btn-secondary btn-sm">Find Matches</button>
+    </div>
+    </div>
+  
+  <p class="health-status small" id="transfer-status-text">
+    Default: Find stores with >30 units to give to stores with <5 units.
+  </p>
+  
+  <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>From (Donor)</th>
+        <th>To (Receiver)</th>
+        <th>Item Family</th>
+        <th>Transfer Qty</th>
+        <th style="text-align: right;">Action</th>
+      </tr>
+    </thead>
+    <tbody id="transfer-table-body">
+      </tbody>
+  </table>
+</div>
+</section>
+
+    </main>
+
+    <footer class="footer">
+      <p>SmartStock · FastAPI · MySQL · ML · Light/Dark mode UI</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+
+  <div id="chat-widget"> 
+    <button id="chat-toggle-btn">🤖</button>
+    <div id="chat-window" class="hidden">
+      <div class="chat-header">
+        <span>🤖 SmartStock Bot</span>
+        <button id="chat-close-btn">✖</button>
+      </div>
+      <div id="chat-messages">
+        <div class="message bot-msg">
+          <strong>Hello! I am your AI Assistant.</strong><br>
+          Ask me things like:<br>
+          • "Stock of GROCERY I in store 1"<br>
+          • "Predict for AUTOMOTIVE in store 2"
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" id="chat-input" placeholder="Ask me something..." />
+        <button id="chat-send-btn">➤</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

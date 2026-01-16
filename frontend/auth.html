@@ -1,0 +1,213 @@
+<!-- auth.html -->
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <title>SmartStock – Login</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+
+<body>
+
+<div class="app" style="max-width:420px;">
+  <section class="card">
+    <h2 id="form-title">Login</h2>
+
+    <!-- NAME (only for register) -->
+    <div id="name-row" class="form-row hidden">
+      <label>Name</label>
+      <input id="name" placeholder="Your name"/>
+    </div>
+
+    <!-- EMAIL -->
+    <div class="form-row">
+      <label>Email</label>
+      <input id="email" type="email" placeholder="you@example.com"/>
+    </div>
+
+    <!-- PASSWORD -->
+     <p id="forgot-link"
+   style="margin-top:6px; cursor:pointer; color:var(--accent); font-size:0.85rem;">
+  Forgot password?
+</p>
+
+    <div class="form-row">
+      <label>Password</label>
+      <input id="password" type="password" minlength="6" placeholder="••••••"/>
+    </div>
+
+    <button id="submit-btn" class="btn btn-sm" style="margin-top:10px;">
+      Login
+    </button>
+
+    <p id="switch" style="margin-top:10px; cursor:pointer; color:var(--accent);">
+      New user? Register here
+    </p>
+
+    <p id="auth-msg" class="health-status small"></p>
+  </section>
+</div>
+
+<script>
+  const forgotLink = document.getElementById("forgot-link");
+
+forgotLink.onclick = async () => {
+  msg.textContent = "";
+  const email = prompt("Enter your registered email:");
+  if (!email) return;
+
+  msg.textContent = "Processing...";
+  try {
+    const res = await fetch(API + "/forgot-password", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ email })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.textContent = data.detail;
+      msg.style.color = "var(--error-text)";
+      return;
+    }
+
+    // Ask new password
+    const newPassword = prompt("Enter new password (min 6 chars):");
+    if (!newPassword) return;
+
+    const res2 = await fetch(API + "/reset-password", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        token: data.reset_token,
+        new_password: newPassword
+      })
+    });
+
+    const data2 = await res2.json();
+
+    if (!res2.ok) {
+      msg.textContent = data2.detail;
+      msg.style.color = "var(--error-text)";
+      return;
+    }
+
+    msg.style.color = "var(--metrics-text)";
+    msg.textContent = "Password reset successful. Please login.";
+
+  } catch (e) {
+    msg.textContent = "Server error.";
+    msg.style.color = "var(--error-text)";
+  }
+};
+
+/* ================= CONFIG ================= */
+const API = "http://127.0.0.1:8000";
+
+/* ================= STATE ================= */
+let mode = "login";
+
+/* ================= ELEMENTS ================= */
+const title = document.getElementById("form-title");
+const nameRow = document.getElementById("name-row");
+const btn = document.getElementById("submit-btn");
+const switchLink = document.getElementById("switch");
+const msg = document.getElementById("auth-msg");
+
+const nameInput = document.getElementById("name");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+
+/* ================= TOGGLE LOGIN / REGISTER ================= */
+switchLink.onclick = () => {
+  msg.textContent = "";
+  msg.style.color = "var(--muted)";
+
+  if (mode === "login") {
+    mode = "register";
+    nameRow.classList.remove("hidden");
+    title.textContent = "Register";
+    btn.textContent = "Register";
+    switchLink.textContent = "Already have an account? Login";
+  } else {
+    mode = "login";
+    nameRow.classList.add("hidden");
+    title.textContent = "Login";
+    btn.textContent = "Login";
+    switchLink.textContent = "New user? Register here";
+  }
+};
+
+/* ================= SUBMIT HANDLER ================= */
+btn.onclick = async () => {
+  msg.style.color = "var(--muted)";
+  msg.textContent = "";
+
+  // ---- Validation ----
+  if (
+    !emailInput.value ||
+    !passwordInput.value ||
+    (mode === "register" && !nameInput.value)
+  ) {
+    msg.textContent = "Please fill all required fields.";
+    msg.style.color = "var(--error-text)";
+    return;
+  }
+
+  msg.textContent = "Processing...";
+
+  // ---- Request body ----
+  const body = {
+    email: emailInput.value.trim(),
+    password: passwordInput.value
+  };
+  if (mode === "register") {
+    body.name = nameInput.value.trim();
+  }
+
+  const endpoint = mode === "login" ? "/login" : "/register";
+
+  try {
+    const res = await fetch(API + endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+
+    // ---- Error handling ----
+    if (!res.ok) {
+      msg.textContent = data.detail || "Authentication failed.";
+      msg.style.color = "var(--error-text)";
+      return;
+    }
+
+    // ---- Success ----
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data));
+
+    msg.style.color = "var(--metrics-text)";
+    msg.textContent = "Success! Redirecting...";
+
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 800);
+
+  } catch (err) {
+    console.error(err);
+    msg.textContent = "Cannot connect to server.";
+    msg.style.color = "var(--error-text)";
+  }
+};
+
+/* ================= AUTO REDIRECT IF LOGGED IN ================= */
+// if (localStorage.getItem("token")) {
+//   window.location.href = "index.html";
+// }
+</script>
+
+
+</body>
+</html>
